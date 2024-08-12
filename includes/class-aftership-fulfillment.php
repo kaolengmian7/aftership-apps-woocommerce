@@ -63,27 +63,32 @@ class AfterShip_Fulfillment {
     public function trackings_to_fulfillments($trackings)
     {
         $fulfillments = array();
-        foreach ($trackings as $index => $tracking ) {
-            $f = [];
-            $f['id'] = (string)($index+1);
-            $f['items'] = safeArrayGet($tracking, 'line_items', []);
-            if (isset($tracking['metrics'])) {
-                $f['created_at'] = safeArrayGet($tracking['metrics'], 'created_at', '');
-                $f['updated_at'] = safeArrayGet($tracking['metrics'], 'updated_at', '');
+        $id = 1;
+        foreach ($trackings as $tracking ) {
+            $tracking_numbers = explode(',', $tracking['tracking_number']);
+            foreach ($tracking_numbers as $number) {    // 兼容：通过逗号分隔的多个 tracking number
+                $f = [];
+                $f['id'] = (string)($id++);
+                $f['items'] = safeArrayGet($tracking, 'line_items', []);
+                if (isset($tracking['metrics'])) {
+                    $f['created_at'] = safeArrayGet($tracking['metrics'], 'created_at', '');
+                    $f['updated_at'] = safeArrayGet($tracking['metrics'], 'updated_at', '');
+                }
+                $f['from_tracking'] = true;
+
+                // trackings to fulfillment trackings
+                $t_arr = [];
+                $t_arr[] = [
+                    'tracking_id' => safeArrayGet($tracking, 'tracking_id', ''),
+                    'tracking_number'=> $number,
+                    'slug' => safeArrayGet($tracking, 'slug', ''),
+                    'additional_fields' => safeArrayGet($tracking, 'additional_fields', []),
+                ];
+                $f['trackings'] = $t_arr;
+
+                $fulfillments[] = $f;
             }
-            $f['from_tracking'] = true;
 
-            // trackings to fulfillment trackings
-            $t_arr = [];
-            $t_arr[] = [
-                'tracking_id' => safeArrayGet($tracking, 'tracking_id', ''),
-                'tracking_number'=> safeArrayGet($tracking, 'tracking_number', ''),
-                'slug' => safeArrayGet($tracking, 'slug', ''),
-                'additional_fields' => safeArrayGet($tracking, 'additional_fields', []),
-            ];
-            $f['trackings'] = $t_arr;
-
-            $fulfillments[] = $f;
         }
         return $fulfillments;
     }
